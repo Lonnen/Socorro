@@ -515,6 +515,31 @@ final class Kohana {
 		{
 			self::$log[] = array(date('Y-m-d H:i:s P'), $type, $message);
 		}
+		if (self::$log_levels[$type] <= self::$configuration['core']['arecibo_log_threshold'])
+		{
+			$url = self::$configuration['core']['arecibo_log_host'];
+			if (empty($url))
+				return;
+
+			$ch = curl_init();
+			$payload = http_build_query(
+				array(
+					'severity' => $type,
+					'message' => $message,
+				)
+			);
+
+			curl_setopt($ch, CURLOPT_URL, $url);
+			curl_setopt($ch, CURLOPT_POST, 1);
+			curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+
+			$timeout = self::$configuration['core']['arecibo_timeout'];
+			if (!empty($timeout))
+				curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+
+			$result = curl_exec($ch);
+			$curl_close($ch);
+		}
 	}
 
 	/**
