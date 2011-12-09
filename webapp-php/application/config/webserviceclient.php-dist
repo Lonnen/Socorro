@@ -26,7 +26,7 @@ $config['basic_auth'] = array('username' => 'example',
  */
 $config['topcrash_vers_rank_cache_minutes'] = 60;
 $config['hang_report_cache_minutes'] = 60;
-
+$config['build_report_cache_minutes'] = 60;
 /**
  * What implementation is used in the Middleware.
  * Can be 'ES' for ElasticSearch or 'PG' for PostgreSQL.

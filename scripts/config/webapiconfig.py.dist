@@ -86,6 +86,11 @@ import socorro.services.hangReport as hr
 import socorro.middleware.search_service as search
 import socorro.middleware.versions_info_service as versions_info
 
+import socorro.middleware.build_service as build
+buildImplementationModule = cm.Option()
+buildImplementationModule.doc = "Name of the implementation module to use"
+buildImplementationModule.default = 'socorro.external.postgresql'
+
 servicesList = cm.Option()
 servicesList.doc = 'a python list of classes to offer as services'
 servicesList.default = [
@@ -105,7 +110,8 @@ servicesList.default = [
     cv.CurrentVersions,
     hr.HangReport,
     search.Search,
-    versions_info.VersionsInfo
+    versions_info.VersionsInfo,
+    build.Build,
 ]
 
 crashBaseUrl = cm.Option()
