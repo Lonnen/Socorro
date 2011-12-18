@@ -133,18 +133,14 @@ class Topcrashers_Model extends Model {
             }
 
             if (!empty($signatures)) {
-			    $sql = "
-			    	SELECT DISTINCT
-			    	  sd.signature,
-			    	  array_to_string(array_agg(pd.version ORDER BY pd.sort_key DESC),', ') as versions,
-			    	  min(sd.first_report) as first_report
-                    FROM signature_productdims sd
-                    INNER JOIN productdims pd ON sd.productdims_id = pd.id
-                    WHERE sd.signature IN (" . implode(", ", $signatures) . ")
-                    AND pd.product = ?
-                    GROUP BY sd.signature
-                ";
-	            if ($rows = $this->fetchRows($sql, TRUE, array($product))) {
+                $config = array();
+                $credentials = Kohana::config('webserviceclient.basic_auth');
+                if($credentials) {
+                    $config['basic_auth'] = $credentials;
+                }
+                $service = new Web_Service($config);
+                $host = Kohana::config('webserviceclient.socorro_hostname');
+                if ($rows = $service->get($host."/".array($product)."/".implode(", ", $signatures))) {
 		            foreach ($results as $result) {
 		                $result->first_report = null;
 		                $result->versions = null;
