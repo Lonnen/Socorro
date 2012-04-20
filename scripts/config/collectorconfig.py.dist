@@ -184,3 +184,19 @@ syslogLineFormatString.default = 'Socorro Collector (pid %(process)d): %(asctime
 syslogErrorLoggingLevel = cm.Option()
 syslogErrorLoggingLevel.doc = 'logging level for the log file (10 - DEBUG, 20 - INFO, 30 - WARNING, 40 - ERROR, 50 - CRITICAL)'
 syslogErrorLoggingLevel.default = 10
+
+
+#-------------------------------------------------------------------------------
+# StatsD constants
+
+statsdHost = cm.Option()
+statsdHost.doc = 'the host address of the statsd server'
+statsdHost.default = None
+
+statsdPort = cm.Option()
+statsdPort.doc = 'the server port to talk to'
+statsdPort.default = 8125
+
+statsdPrefix = cm.Option()
+statsdPrefix.port = 'namespace string to prepends to stats'
+statsdPrefix.default = 'socorro.collector' 
