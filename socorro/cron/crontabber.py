@@ -3,7 +3,6 @@
 """
 CronTabber is a configman app for executing all Socorro cron jobs.
 """
-import os
 import traceback
 import inspect
 import datetime
@@ -147,9 +146,6 @@ class JSONJobDatabase(dict):
     _date_fmt = '%Y-%m-%d %H:%M:%S.%f'
     _day_fmt = '%Y-%m-%d'
 
-    def __init__(self, config=None):
-        self.config = config
-
     def load(self, file_path):
         try:
             self.update(self._recurse_load(json.load(open(file_path))))
@@ -193,49 +189,6 @@ class JSONJobDatabase(dict):
             elif not isinstance(value, basestring):
                 struct[key] = unicode(value)
         return struct
-
-
-class JSONAndPostgresJobDatabase(JSONJobDatabase):
-
-    def load(self, file_path):
-        if not os.path.isfile(file_path):
-            # try to read from postgres instead
-            self._load_from_postgres(file_path)
-        super(JSONAndPostgresJobDatabase, self).load(file_path)
-
-    def _load_from_postgres(self, file_path):
-        database = self.config.database_class(self.config)
-        with database() as connection:
-            cursor = connection.cursor()
-            cursor.execute('SELECT state FROM crontabber_state')
-            try:
-                json_dump, = cursor.fetchone()
-                if json_dump != '{}':
-                    with open(file_path, 'w') as f:
-                        f.write(json_dump)
-            except ValueError:
-                pass
-
-    def save(self, file_path):
-        super(JSONAndPostgresJobDatabase, self).save(file_path)
-        try:
-            self._save_to_postgres()
-        except Exception:
-            #raise  # for desperate debugging
-            self.config.logger.error("Unable to save JSON to postgres",
-                                     exc_info=True)
-
-    def _save_to_postgres(self):
-        json_data = json.dumps(
-            self._recurse_serialize(copy.deepcopy(dict(self))),
-            indent=2
-        )
-        database = self.config.database_class(self.config)
-        with database() as connection:
-            cursor = connection.cursor()
-            cursor.execute('UPDATE crontabber_state SET state=%s',
-                           (json_data,))
-            connection.commit()
 
 
 def timesince(d, now=None):  # pragma: no cover
@@ -487,12 +440,6 @@ class CronTabber(App):
         doc='Location of file where job execution logs are stored',
     )
 
-    required_config.add_option(
-        name='json_database_class',
-        default=JSONAndPostgresJobDatabase,
-        doc='Class to load and save the JSON database',
-    )
-
     required_config.add_option('database_class',
                                default=ConnectionContext,
                                from_string_converter=class_converter)
@@ -564,7 +511,7 @@ class CronTabber(App):
     @property
     def database(self):
         if not getattr(self, '_database', None):
-            self._database = self.config.json_database_class(self.config)
+            self._database = JSONJobDatabase()
             self._database.load(self.config.database)
         return self._database
 
@@ -733,7 +680,7 @@ class CronTabber(App):
             tb = ''.join(traceback.format_tb(exc_tb))
             info['last_error'] = {
               'type': exc_type,
-              'value': str(exc_value),
+              'value': exc_value,
               'traceback': tb,
             }
             info['error_count'] = info.get('error_count', 0) + 1

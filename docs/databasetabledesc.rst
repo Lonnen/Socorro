@@ -440,9 +440,9 @@ cronjob and database management
 
 These tables support scheduled tasks which are run in Socorro.
 
-crontabber_state
-	contains a JSON file and a timestamp with a backup of
-	the latest crontabber state information.
+cronjobs
+	contains last-completed and success/failure status for each cronjob
+	which affects the database.  Currently does not include all cronjobs.
 
 report_partition_info
 	contains configuration information on how the partitioning cronjob
@@ -454,8 +454,6 @@ socorro_db_version
 	
 socorro_db_version_history
 	contains the history of version upgrades of the current database.
-	
-
 	
 
 	

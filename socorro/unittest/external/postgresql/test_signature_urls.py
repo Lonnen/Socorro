@@ -24,8 +24,7 @@ class TestSignatureURLs(PostgreSQLTestCase):
             INSERT INTO products
             (product_name, sort, rapid_release_version, release_name)
             VALUES
-            ('Firefox', 1, '8.0', 'firefox'),
-            ('Fennec', 2, '12.0', 'fennec');
+            ('Firefox', 1, '8.0', 'firefox');
 
             INSERT INTO reports_clean VALUES
             (
@@ -71,28 +70,6 @@ class TestSignatureURLs(PostgreSQLTestCase):
                 631719,
                 'x86',
                 2
-            ),
-            (
-                '32bcc6e8-c23b-48ce-abf0-70d0e2120343',
-                '%s',
-                '%s',
-                817,
-                20111228055358,
-                2895542,
-                '384:52:52'::interval,
-                '00:19:45'::interval,
-                245,
-                11427500,
-                'Windows',
-                71,
-                '55',
-                215,
-                'Browser',
-                'Beta',
-                '',
-                631719,
-                'x86',
-                2
             );
             INSERT INTO reports_user_info VALUES
             (
@@ -112,15 +89,6 @@ class TestSignatureURLs(PostgreSQLTestCase):
                 AdapterSubsysID: 05021002, AdapterDriverVersion: 8.920.0.0',
                 '',
                 'http://wikipedia.org/Code_Rush'
-            ),
-            (
-                '32bcc6e8-c23b-48ce-abf0-70d0e2120343',
-                '%s',
-                '',
-                'AdapterVendorID: 0x1002, AdapterDeviceID: 0x9442,
-                AdapterSubsysID: 05021002, AdapterDriverVersion: 8.920.0.0',
-                '',
-                'http://arewemobileyet.org/'
             );
             INSERT INTO signatures VALUES
             (
@@ -155,23 +123,8 @@ class TestSignatureURLs(PostgreSQLTestCase):
                 '%s',
                 True,
                 'Beta'
-            ),
-            (
-                817,
-                'Fennec',
-                '12.0a2',
-                '12.0a2',
-                '12.0a2',
-                0,
-                '011000000r000',
-                '%s',
-                '%s',
-                True,
-                'Beta'
             );
-        """ % (now, now, now, now, now, now,
-               now, now, now, now, now, now,
-               now, now, now, now))
+        """ % (now, now, now, now, now, now, now, now, now, now, now))
 
         self.connection.commit()
 
@@ -268,36 +221,6 @@ class TestSignatureURLs(PostgreSQLTestCase):
                  }
             ],
             "total": 2
-        }
-
-        self.assertEqual(res, res_expected)
-
-        # Test 5: Return results for all products and versions
-        params = {
-            "signature": "EMPTY: no crashing thread identified; corrupt dump",
-            "start_date": now_str,
-            "end_date": now_str,
-            "products": ['ALL'],
-            "versions": ["ALL"]
-        }
-
-        res = signature_urls.get(**params)
-        res_expected = {
-            "hits": [
-                {
-                    "url": "http://deusex.wikia.com/wiki/Praxis_kit",
-                    "crash_count": 1
-                 },
-                     {
-                    "url": "http://wikipedia.org/Code_Rush",
-                    "crash_count": 1
-                 },
-                     {
-                    "url": "http://arewemobileyet.org/",
-                    "crash_count": 1
-                 }
-            ],
-            "total": 3
         }
 
         self.assertEqual(res, res_expected)

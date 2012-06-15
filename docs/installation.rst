@@ -9,7 +9,7 @@ Socorro VM (built with Vagrant + Puppet)
 ------------
 
 You can build a standalone Socorro development VM -
-see :ref:`setupdevenv-chapter` for more info.
+see :ref:`setupdevenv-chapter` for more info. 
 
 The config files and puppet manifests in ./puppet/ are a useful reference
 when setting up Socorro for the first time.
@@ -20,7 +20,7 @@ Automated Install using Puppet
 It is possible to use puppet to script an install onto an existing environment.
 This has been tested in EC2 but should work on any regular Ubuntu Lucid install.
 
-See puppet/ubuntu-bootstrap.sh for an example.
+See puppet/bootstrap.sh for an example.
 
 Manual Install
 ------------
@@ -51,7 +51,7 @@ Ubuntu
 
 As *root*:
 ::
-  apt-get install supervisor rsyslog libcurl4-openssl-dev build-essential sun-java6-jdk ant python-software-properties subversion libpq-dev python-virtualenv python-dev libcrypt-ssleay-perl php5-tidy apache2 libapache2-mod-wsgi memcached php5-pgsql php5-curl php5-dev php-pear php5-common php5-cli php5-memcache php5 php5-gd php5-mysql php5-ldap hadoop-hbase hadoop-hbase-master hadoop-hbase-thrift curl liblzo2-dev postgresql-9.0 postgresql-plperl-9.0 postgresql-contrib-9.0
+  apt-get install supervisor rsyslog libcurl4-openssl-dev build-essential sun-java6-jdk ant python-software-properties subversion libpq-dev python-virtualenv python-dev libcrypt-ssleay-perl phpunit php5-tidy python-psycopg2 python-simplejson apache2 libapache2-mod-wsgi memcached php5-pgsql php5-curl php5-dev php-pear php5-common php5-cli php5-memcache php5 php5-gd php5-mysql php5-ldap hadoop-hbase hadoop-hbase-master hadoop-hbase-thrift curl liblzo2-dev postgresql-9.0 postgresql-plperl-9.0 postgresql-contrib-9.0
 
 RHEL/Centos
 ````````````
@@ -65,7 +65,7 @@ Choose "minimal" as install option.
 
 As *root*:
 ::
-  yum install httpd mod_ssl mod_wsgi postgresql-server postgresql-plperl perl-pgsql_perl5 postgresql-contrib subversion make rsync php-pecl-memcache memcached php-pgsql subversion gcc-c++ curl-devel ant python-virtualenv hadoop-0.20 hadoop-hbase daemonize
+  yum install python-psycopg2 simplejson httpd mod_ssl mod_wsgi postgresql-server postgresql-plperl perl-pgsql_perl5 postgresql-contrib subversion make rsync php-pecl-memcache memcached php-pgsql subversion gcc-c++ curl-devel ant python-virtualenv php-phpunit-PHPUnit hadoop-0.20 hadoop-hbase daemonize
 
 5) Disable SELinux
 
@@ -116,7 +116,7 @@ As *root*:
   mkdir -p /data/socorro
   useradd socorro
   chown socorro:socorro /var/log/socorro
-  mkdir /home/socorro/primaryCrashStore /home/socorro/fallback /home/socorro/persistent
+  mkdir /home/socorro/primaryCrashStore /home/socorro/fallback
   chown apache /home/socorro/primaryCrashStore /home/socorro/fallback
   chmod 2775 /home/socorro/primaryCrashStore /home/socorro/fallback
 
@@ -213,7 +213,7 @@ Install Socorro cron jobs
 From inside the Socorro checkout, as the *root* user:
 ::
   ln -s /data/socorro/application/scripts/crons/socorrorc /etc/socorro/
-  cp puppet/files/etc_crond/socorro /etc/cron.d/
+  crontab puppet/files/etc_crond/socorro
 
 Socorro's cron jobs are moving to a new cronjob manager called :ref:`crontabber-chapter`.
 :ref:`crontabber-chapter` runs every 5 minutes from the system crontab, and looks inside
@@ -255,21 +255,10 @@ and versions into the system.
 
 Configure Apache
 ````````````
-Socorro uses three virtual hosts:
-
-* crash-stats   - the web UI for viewing crash reports
-* socorro-api   - the "middleware" used by the web UI 
-* crash-reports - receives reports from crashing clients (via HTTP POST)
-
 As *root*:
 ::
-  cp puppet/files/etc_apache2_sites-available/{crash-reports,crash-stats,socorro-api} /etc/httpd/conf.d/
-
-edit /etc/httpd/conf.d/{crash-reports,crash-stats,socorro-api} and customize
-as needed for your site
-
-As *root*
-::
+  edit /etc/httpd/conf.d/socorro.conf
+  cp config/socorro.conf /etc/httpd/conf.d/socorro.conf
   mkdir /var/log/httpd/{crash-stats,crash-reports,socorro-api}.example.com
   chown apache /data/socorro/htdocs/application/logs/
 

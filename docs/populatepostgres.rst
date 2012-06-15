@@ -21,8 +21,7 @@ Shut down all Socorro services, drop your database (if needed) and load
 the schema.
 From inside the Socorro checkout, as *postgres* user:
 ::
-  export PYTHONPATH=/data/socorro/application:/data/socorro/thirdparty
-  ./socorro/external/postgresql/setupdb_app.py --database_name=breakpad
+  ./socorro/external/postgresql/setupdb_app.py --database_name=breakpad_rw
 
 Customize CSVs, at minimum you probably need to bump the dates and build IDs in: 
   raw_adu.csv reports.csv releases_raw.csv
@@ -53,7 +52,7 @@ volume is low enough, you may want to modify this function
 (it is in breakpad_schema.sql referenced above).
 
 Normally this is run for the previous day by cron_daily_matviews.sh 
-but you can simply run the backfill_matviews() function to bootstrap the system.
+but you can simply run the backfill function to bootstrap the system:
 
 This is normally run by the import.sh, so take a look in there if
 you need to make adjustments.

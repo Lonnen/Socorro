@@ -99,9 +99,7 @@ foreach($options[$type] as $k => $readable) {
 <?php } ?>
 	<li><a href="#comments"><span>Comments (<?= count($comments) ?>)</span></a></li>
         <li><a href="#correlation"><span>Correlations</span></a></li>
-        <?php if ($logged_in) { ?>
-            <li><a href="#sigurls"><span>URLs</span></a></li>
-        <?php } ?>
+        <li><a href="#sigurls"><span>URLs</span></a></li>
     </ul>
     
     <div id="sigsummary">
@@ -191,7 +189,6 @@ foreach($options[$type] as $k => $readable) {
     if ($logged_in) {
         View::factory('common/signature_urls', array(
             'urls' => $urls,
-            'display_signature' => $display_signature
         ))->render(TRUE);
     }
 ?>
