@@ -1,7 +1,8 @@
+<?php
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
+?>
 <?php slot::start('head') ?>
     <title>Server Status</title>
     <?php echo html::stylesheet(array(
@@ -21,7 +22,7 @@
 	<h2>Server Status</h2>
 </div>
 
-<?php 
+<?php
     $stat = $server_stats[0];
 ?>
 <div class="panel">

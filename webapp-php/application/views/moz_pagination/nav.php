@@ -1,12 +1,14 @@
+<?php
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-<?php defined('SYSPATH') OR die('No direct access allowed.');
+defined('SYSPATH') OR die('No direct access allowed.');
+
 /**
  * Slightly updated version of the Kohana - Digg pagination style used in MCC.
  *
- * @preview  « Previous  1 2 … 5 6 7 8 9 10 11 12 … 25 26  Next »
+ * @preview  « Previous  1 2...  5 6 7 8 9 10 11 12 ... 25 26  Next »
  * @author Ryan Snyder <rsnyder@mozilla.com>
  */
 ?>
