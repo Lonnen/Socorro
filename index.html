@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="utf-8" />
-	<title>Sandbox</title>
+	<title>Socorro Release Dashboard</title>
     <link rel="stylesheet" href="stylesheets/foundation.css">
     <link rel="stylesheet" href="stylesheets/app.css">
     <script type="text/javascript" src="http://modernizr.com/downloads/modernizr.js"></script>
@@ -14,6 +14,15 @@
 </head>
 
 <body>
-
+    <h1>In Development</h1>
+    <ul></ul>
+    <h1>Releases</h1>
+    <ul></ul>
+    <script type="text/template" id="ref">
+        <li>
+        <a href='<%= url %>'><%= name %></a>
+        <%= sha  %>
+        </li>
+    </script>
 </body>
 </html>
