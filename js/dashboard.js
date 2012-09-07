@@ -62,5 +62,42 @@ var askGithub = function(apiCall, options) {
         }
     }
     _.extend(apiParams, options).callHttpApi();
-};
-askGithub('/repos/mozilla/socorro/git/refs/tags', {success: function(r) { console.log(r) }})
+},
+/**
+ * Public: a callback that populates the page with release information
+ *
+ * response - a response object from a Github api call to the refs api
+ *            containing lists of refs, all of which are assumed to be tags
+ */
+handleTags = function(response) {
+    data = response.data;
+    $('#releases').empty()
+    _.map(data, function(d) {
+        askGithub(
+            '/repos/mozilla/socorro/git/tags/'+d.object.sha,
+            { success: handleTag }
+        );
+    });
+},
+/**
+ * Public: a callback for adding a single tag to the release info list
+ */
+handleTag = function(response) {
+    tag = response.data;
+    if (tag.message === "Not Found") {
+        return
+    }
+    date = new Date(tag.tagger.date)
+        console.log(date.toString())
+    details = {
+        name: tag.tag,
+        date: date.getFullYear()+"-"+date.getMonth()+"-"+date.getDay(),
+        url: "https://github.com/mozilla/socorro/tree/" + tag.tag,
+    }
+
+    $('#releases').append(
+        _.template($('#tag').text())(details)
+    );
+}
+
+askGithub('/repos/mozilla/socorro/git/refs/tags', {success: handleTags})
