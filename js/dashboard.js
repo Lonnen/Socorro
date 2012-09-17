@@ -1,3 +1,4 @@
+$(function(){
 /**
  * Public: make a request to the github api
  *
@@ -70,8 +71,8 @@ var askGithub = function(apiCall, options) {
  *            containing lists of refs, all of which are assumed to be tags
  */
 handleTags = function(response) {
-    data = response.data;
-    $('#releases').empty()
+    var data = response.data;
+    $('#releases').empty();
     _.map(data, function(d) {
         askGithub(
             '/repos/mozilla/socorro/git/tags/'+d.object.sha,
@@ -83,21 +84,138 @@ handleTags = function(response) {
  * Public: a callback for adding a single tag to the release info list
  */
 handleTag = function(response) {
-    tag = response.data;
+    var tag = response.data;
     if (tag.message === "Not Found") {
         return
     }
-    date = new Date(tag.tagger.date)
-        console.log(date.toString())
-    details = {
-        name: tag.tag,
+    var date = new Date(tag.tagger.date)
+    var details = {
+        // ditch the leading 'v' char
+        name: tag.tag.substring(1),
         date: date.getFullYear()+"-"+date.getMonth()+"-"+date.getDay(),
-        url: "https://github.com/mozilla/socorro/tree/" + tag.tag,
+        github_url: "https://github.com/mozilla/socorro/tree/" + tag.tag,
     }
 
-    $('#releases').append(
-        _.template($('#tag').text())(details)
-    );
+
+    releases.create(details);
+    //$('#releases').append(
+    //    _.template($('#tag-template').text())(details)
+    //);
 }
 
 askGithub('/repos/mozilla/socorro/git/refs/tags', {success: handleTags})
+
+
+/****************/
+
+// Tag Model
+// ---------
+
+// model for a tagged release
+var Tag = Backbone.Model.extend({
+
+    // the notion of defaults don't really make sense here,
+    // but these help with debugging.
+    defaults: function() {
+        return {
+            name: 'null',
+            date: new Date(),
+            github_url: "/",
+        }
+    },
+
+    // no initialize function?
+    // what about getting the bugs?
+    // initialize: function() {},
+});
+
+// collection of tags
+var TagList = Backbone.Collection.extend({
+
+    // This is a collection of Tags
+    model: Tag,
+
+    // cache these in localstorage since tags will only be
+    // added and never removed
+    localStorage: new Store("releases-backbone"),
+
+    // sort tags by version number
+    // for historic reasons,
+    // versions are dot seperated numbers of variable length
+    // though modern versions are typically a single integer
+    // ex. 10, 11.8, 11.8.2
+    comparator: function(tagA, tagB) {
+        var a = tagA.get('name').split("."),
+            b = tagB.get('name').split("."),
+            m = 0;
+        while (m < a.length) {
+            var a0 = Number(a[m]),
+                b0 = Number(b[m]);
+            if (a0 < b0) {
+                return 1;
+            }
+            if (a0 > b0) {
+                return -1;
+            }
+            m += 1;
+        }
+        return 0;
+    }
+
+});
+
+// global collection of release tags
+var releases = new TagList;
+
+// The DOM element for presenting a release tag
+var TagView = Backbone.View.extend({
+
+    //... is a list item
+    tagName: "li",
+
+    // cache the template function
+    template: _.template($('#tag-template').html()),
+
+    // register the view with the model so that renders
+    // can be triggered from the model
+    initialize: function() {
+        this.model.on('change', this.render, this);
+        this.model.view = this;
+    },
+
+    // Render the view with the model information
+    render: function() {
+        this.$el.html(this.template(this.model.toJSON()));
+        return this;
+    }
+
+});
+
+
+// Releases UI
+var ReleaseView = Backbone.View.extend({
+
+    // Bind to the existing skeleton of the App in the HTML
+    el: $("#releasedash"),
+
+    // Ensure new tags get reflected in the UI
+    // tags are only added, never deleted
+    initialize: function() {
+        releases.on('add', this.addOne, this);
+        releases.on('all', this.render, this);
+    },
+
+    // Add a single release tag item
+    addOne: function(tag) {
+        var view = new TagView({model: tag});
+        //this.$("#releases").append(view.render().el);
+        this.$('#releases').empty();
+        releases.each(function(tag) {
+           this.$('#releases').append(tag.view.render().el);
+        });
+    }
+
+});
+
+releaseManager = new ReleaseView;
+})
