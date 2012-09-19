@@ -72,7 +72,6 @@ var askGithub = function(apiCall, options) {
  */
 handleTags = function(response) {
     var data = response.data;
-    $('#releases').empty();
     _.map(data, function(d) {
         askGithub(
             '/repos/mozilla/socorro/git/tags/'+d.object.sha,
@@ -91,9 +90,8 @@ handleTag = function(response) {
     var date = new Date(tag.tagger.date)
     var details = {
         // ditch the leading 'v' char
-        name: tag.tag.substring(1),
+        version: tag.tag.substring(1),
         date: date.getFullYear()+"-"+date.getMonth()+"-"+date.getDay(),
-        github_url: "https://github.com/mozilla/socorro/tree/" + tag.tag,
     }
 
 
@@ -118,15 +116,26 @@ var Tag = Backbone.Model.extend({
     // but these help with debugging.
     defaults: function() {
         return {
-            name: 'null',
+            version: 'null',
             date: new Date(),
-            github_url: "/",
         }
     },
 
     // no initialize function?
-    // what about getting the bugs?
-    // initialize: function() {},
+    initialize: function() {
+        var bzUrlTemplate = _.template("https://bugzilla.mozilla.org/" +
+                                       "buglist.cgi?query_format=advanced&" +
+                                       "target_milestone=<%= version %>&" +
+                                       "product=Socorro");
+        var ghUrlTemplate = _.template("https://github.com/mozilla/socorro/tree/v" +
+                                       "<%= version %>");
+        // confusingly toJSON() returns an object, not a string
+        var modelAttributes = this.toJSON();
+        this.set({
+            githubURL: bzUrlTemplate(modelAttributes),
+            bugzillaURL: ghUrlTemplate(modelAttributes),
+        });
+    },
 });
 
 // collection of tags
@@ -145,8 +154,8 @@ var TagList = Backbone.Collection.extend({
     // though modern versions are typically a single integer
     // ex. 10, 11.8, 11.8.2
     comparator: function(tagA, tagB) {
-        var a = tagA.get('name').split("."),
-            b = tagB.get('name').split("."),
+        var a = tagA.get('version').split("."),
+            b = tagB.get('version').split("."),
             m = 0;
         while (m < a.length) {
             var a0 = Number(a[m]),

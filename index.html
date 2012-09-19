@@ -35,13 +35,10 @@
     <!-- Templates -->
     <script type="text/template" id="tag-template">
         <li>
-            <a href='<%= github_url %>'><%= name %></a>
+            <a href='<%= githubURL %>'><%= version %></a>
+            <a href='<%= bugzillaURL %>'>bugs</a>
             <span>Released: <%= date %></span>
         </li>
-    </script>
-
-    <script type="text/template" id="bugzilla-url-template">
-        <a href="https://bugzilla.mozilla.org/buglist.cgi?query_format=advanced&target_milestone=<%= version %>20&product=Socorro">bugs</a>
     </script>
 </body>
 </html>
