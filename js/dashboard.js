@@ -132,8 +132,8 @@ var Tag = Backbone.Model.extend({
         // confusingly toJSON() returns an object, not a string
         var modelAttributes = this.toJSON();
         this.set({
-            githubURL: bzUrlTemplate(modelAttributes),
-            bugzillaURL: ghUrlTemplate(modelAttributes),
+            bugzillaURL: bzUrlTemplate(modelAttributes),
+            githubURL: ghUrlTemplate(modelAttributes),
         });
     },
 });
