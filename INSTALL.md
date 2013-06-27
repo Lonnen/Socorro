@@ -33,7 +33,7 @@ Run unit tests
 --------------
 
 Before running the tests, you will have to make sure your configuration has the
-CACHES key set to use LocMemCache as a backend (however it will break work of an anonymous CSRF on servers with more than one web-server thread). See
+CACHES key set to use LocMemCache as a backend. See
 ``crashstats/settings/local.py-dist`` for a working example. Then you will need to compress static files, using the
 following:
 
@@ -102,3 +102,10 @@ Paste this into `.git/hooks/pre-commit`:
 Then, make the file executable:
 
     chmod +x .git/hooks/pre-commit
+
+
+Production notes
+----------------
+Do not use locmem cache, as it will break work of an anonymous CSRF on servers with more than one web-server thread.
+[More details](https://github.com/mozilla/django-session-csrf#differences-from-django)
+
