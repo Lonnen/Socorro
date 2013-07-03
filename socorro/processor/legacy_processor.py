@@ -183,6 +183,12 @@ class LegacyCrashProcessor(RequiredConfig):
         'collected',
         default=True,
     )
+    required_config.add_option(
+        'with_old_monitor',
+        doc='boolean indictating if we are using the old monitor_app.py',
+        default=True,
+    )
+    required_config.namespace('statistics')
     required_config.namespace('statistics')
     required_config.statistics.add_option(
         'stats_class',
@@ -876,7 +882,7 @@ class LegacyCrashProcessor(RequiredConfig):
                 try:
                     processed_crash_update.cpu_info = ('%s | %s' % (
                         processed_crash_update.cpu_info,
-                        self._get_truncate_or_none(values[3], 100)
+                        self._get_truncate_or_none(values, 3, 100)
                     ))
                 except IndexError:
                     pass
@@ -1145,11 +1151,12 @@ class LegacyCrashProcessor(RequiredConfig):
     def _log_job_start(self, crash_id):
         self.config.logger.info("starting job: %s", crash_id)
         started_datetime = utc_now()
-        self.transaction(
-            execute_no_results,
-            "update jobs set starteddatetime = %s where uuid = %s",
-            (started_datetime, crash_id)
-        )
+        if self.config.with_old_monitor:
+            self.transaction(
+                execute_no_results,
+                "update jobs set starteddatetime = %s where uuid = %s",
+                (started_datetime, crash_id)
+            )
         return started_datetime
 
     #--------------------------------------------------------------------------
@@ -1159,23 +1166,15 @@ class LegacyCrashProcessor(RequiredConfig):
             'successful' if success else 'failed',
             crash_id
         )
-        # old behavior - processors just mark jobs in the postgres queue as
-        # being done.  This is deprecated in favor of the processor cleaning
-        # up after itself.
-        #self.transaction(
-            #execute_no_results,
-            #"update jobs set completeddatetime = %s, success = %s "
-            #"where uuid = %s",
-            #(completed_datetime, success, crash_id)
-        #)
 
-        # new behavior - the processors delete completed jobs from the queue
-        self.transaction(
-            execute_no_results,
-            "delete from jobs "
-            "where uuid = %s",
-            (crash_id,)
-        )
+        # the processors delete completed jobs from the monitor queue
+        if self.config.with_old_monitor:
+            self.transaction(
+                execute_no_results,
+                "delete from jobs "
+                "where uuid = %s",
+                (crash_id,)
+            )
 
     #--------------------------------------------------------------------------
     @staticmethod

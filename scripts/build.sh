@@ -37,8 +37,13 @@ then
   exit 1
 fi
 
-# Override database hostname
+# Override hostnames for jenkins
 export DB_HOST="jenkins-pg92"
+export RABBITMQ_HOST="rabbitmq-zlb.webapp.phx1.mozilla.com"
+export RABBITMQ_USERNAME="socorro-jenkins"
+export RABBITMQ_PASSWORD="aPassword"
+export RABBITMQ_VHOST="socorro-jenkins"
+
 # RHEL postgres 9 RPM installs pg_config here, psycopg2 needs it
 export PATH=/usr/pgsql-9.2/bin:$PATH
 echo "My path is $PATH"
@@ -46,7 +51,7 @@ echo "My path is $PATH"
 # 'make jenkins' is for the OLD config system, and can be removed
 # when all tests are updated to use configman
 make jenkins
-make coverage DB_USER=test DB_HOST=$DB_HOST DB_PASSWORD=aPassword
+make coverage DB_USER=test DB_HOST=$DB_HOST DB_PASSWORD=aPassword DB_SUPERUSER=test DB_SUPERPASSWORD=aPassword
 
 # pull pre-built, known version of breakpad
 make clean
@@ -56,7 +61,8 @@ mv breakpad stackwalk
 
 # run socorro integration test
 echo "Running integration test..."
-./scripts/integration-test.sh --destroy
+./scripts/monitor-integration-test.sh --destroy
+./scripts/rabbitmq-integration-test.sh --destroy
 
 # package socorro.tar.gz for distribution
 mkdir builds/

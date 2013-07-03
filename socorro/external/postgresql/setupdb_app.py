@@ -44,6 +44,8 @@ class PostgreSQLAlchemyManager(object):
     def setup_admin(self):
         self.session.execute('SET check_function_bodies = false')
         self.session.execute('CREATE EXTENSION IF NOT EXISTS citext')
+        self.session.execute('CREATE EXTENSION IF NOT EXISTS hstore')
+        self.session.execute('CREATE EXTENSION IF NOT EXISTS json_enhancements')
         self.session.execute('CREATE SCHEMA bixie')
         self.session.execute('GRANT ALL ON SCHEMA bixie, public TO breakpad_rw')
 
@@ -196,10 +198,10 @@ class PostgreSQLAlchemyManager(object):
                 TO breakpad_ro
             """)
 
-        for rw in config.read_write_users:
+        for rw in config.read_write_users.split(','):
             roles.append("GRANT breakpad_rw TO %s" % rw)
 
-        for ro in config.read_only_users:
+        for ro in config.read_only_users.split(','):
             roles.append("GRANT breakpad_ro TO %s" % ro)
 
         errors = [
@@ -353,20 +355,14 @@ class SocorroDB(App):
     )
 
     required_config.add_option(
-        name='citext',
-        default='/usr/share/postgresql/9.0/contrib/citext.sql',
-        doc='Name of citext.sql file',
-    )
-
-    required_config.add_option(
         name='read_write_users',
-        default=['postgres', 'breakpad_rw', 'monitor'],
+        default='postgres, breakpad_rw, monitor',
         doc='Name of database to manage',
     )
 
     required_config.add_option(
         name='read_only_users',
-        default=['breakpad_ro', 'breakpad', 'analyst'],
+        default='breakpad_ro, breakpad, analyst',
         doc='Name of database to manage',
     )
 
@@ -378,7 +374,7 @@ class SocorroDB(App):
 
     required_config.add_option(
         name='fakedata_days',
-        default=15,
+        default=7,
         doc='How many days of synthetic test data to generate'
     )
 
@@ -434,7 +430,6 @@ class SocorroDB(App):
             return 1
 
         self.no_schema = self.config.get('no_schema')
-        self.citext = self.config.get('citext')
 
         self.force = self.config.get('force')
 
@@ -459,7 +454,6 @@ class SocorroDB(App):
         url_template = connection_url()
         sa_url = url_template + '/%s' % 'postgres'
 
-        # Using the old connection manager style
         with PostgreSQLAlchemyManager(sa_url, self.config.logger,
                 autocommit=False) as db:
             db_version = db.version()
@@ -501,11 +495,7 @@ class SocorroDB(App):
                     return 0
                 raise
 
-            connection.execute('CREATE EXTENSION IF NOT EXISTS citext')
             connection.close()
-
-        if self.no_schema:
-            return 0
 
         # Reconnect to set up bixie schema, types and procs
         sa_url = url_template + '/%s' % self.database_name
@@ -514,13 +504,15 @@ class SocorroDB(App):
         with PostgreSQLAlchemyManager(sa_url, self.config.logger) as db:
             connection = db.engine.connect()
             db.setup_admin()
+            if self.no_schema:
+                db.commit()
+                return 0
             db.create_types()
-            db.commit()
             db.create_procs()
+            db.set_sequence_owner('breakpad_rw')
             db.commit()
             db.create_tables()
             db.set_table_owner('breakpad_rw')
-            db.set_sequence_owner('breakpad_rw')
             db.create_views()
             db.commit()
             db.set_grants(self.config) # config has user lists

@@ -13,15 +13,15 @@ COVERAGE = $(VIRTUALENV)/bin/coverage
 PYLINT = $(VIRTUALENV)/bin/pylint
 JENKINS_CONF = jenkins.py.dist
 
-.PHONY: all test install reinstall install-socorro install-web virtualenv coverage lint clean minidump_stackwalk analysis thirdparty
+.PHONY: all test install reinstall install-socorro install-web virtualenv coverage lint clean minidump_stackwalk analysis thirdparty webapp-django
 
 
 all:	test
 
 setup-test: virtualenv
 	cd config; for file in *.ini-dist; do if [ ! -f `basename $$file -dist` ]; then cp $$file `basename $$file -dist`; fi; done
-	PYTHONPATH=$(PYTHONPATH) $(SETUPDB) --database_name=socorro_integration_test --database_username=$(DB_USER) --database_hostname=$(DB_HOST) --database_password=$(DB_PASSWORD) --database_port=$(DB_PORT) --dropdb
-	PYTHONPATH=$(PYTHONPATH) $(SETUPDB) --database_name=socorro_test --database_username=$(DB_USER) --database_hostname=$(DB_HOST) --database_password=$(DB_PASSWORD) --database_port=$(DB_PORT) --dropdb --no_schema
+	PYTHONPATH=$(PYTHONPATH) $(SETUPDB) --database_name=socorro_integration_test --database_username=$(DB_USER) --database_hostname=$(DB_HOST) --database_password=$(DB_PASSWORD) --database_port=$(DB_PORT) --database_superusername=$(DB_SUPERUSER) --database_superuserpassword=$(DB_SUPERPASSWORD) --dropdb
+	PYTHONPATH=$(PYTHONPATH) $(SETUPDB) --database_name=socorro_test --database_username=$(DB_USER) --database_hostname=$(DB_HOST) --database_password=$(DB_PASSWORD) --database_port=$(DB_PORT) --database_superusername=$(DB_SUPERUSER) --database_superuserpassword=$(DB_SUPERPASSWORD) --dropdb --no_schema
 	cd socorro/unittest/config; for file in *.py.dist; do if [ ! -f `basename $$file .dist` ]; then cp $$file `basename $$file .dist`; fi; done
 
 test: setup-test
@@ -41,9 +41,11 @@ reinstall: install-socorro install-web
 	REV=`cat $(PREFIX)/revision.txt` && sed -ibak "s/CURRENT_SOCORRO_REVISION/$$REV/" $(PREFIX)/application/scripts/config/revisionsconfig.py
 	REV=`cat $(PREFIX)/stackwalk/revision.txt` && sed -ibak "s/CURRENT_BREAKPAD_REVISION/$$REV/" $(PREFIX)/application/scripts/config/revisionsconfig.py
 
-install-socorro:
+install-socorro: webapp-django
 	# create base directories
+	# FIXME this goes away when the PHP does
 	mkdir -p $(PREFIX)/htdocs
+	mkdir -p $(PREFIX)/webapp-django
 	mkdir -p $(PREFIX)/application
 	# copy to install directory
 	rsync -a config $(PREFIX)/application
@@ -61,6 +63,8 @@ install-socorro:
 	cd $(PREFIX)/application/scripts/config; for file in *.py.dist; do cp $$file `basename $$file .dist`; done
 
 install-web:
+	rsync -a webapp-django/ $(PREFIX)/webapp-django/
+	# FIXME - below goes away when deprecated PHP app is removed
 	rsync -a --exclude="tests" webapp-php/ $(PREFIX)/htdocs
 	cd $(PREFIX)/htdocs/modules/auth/config/; for file in *.php-dist; do cp $$file `basename $$file -dist`; done
 	cd $(PREFIX)/htdocs/modules/recaptcha/config; for file in *.php-dist; do cp $$file `basename $$file -dist`; done
@@ -101,3 +105,13 @@ analysis:
 	rsync socorro-toolbox/target/*.jar analysis/
 	rsync akela/target/*.jar analysis/
 	rsync -a socorro-toolbox/src/main/pig/ analysis/
+
+json_enhancements_pg_extension: virtualenv
+    # This is only run manually, as it is a one-time operation
+    # to be performed at system installation time, rather than
+    # every time Socorro is built
+	if [ ! -f `pg_config --pkglibdir`/json_enhancements.so ]; then sudo $(VIRTUALENV)/bin/python -c "from pgxnclient import cli; cli.main(['install', 'json_enhancements'])"; fi
+
+webapp-django:
+	if [ ! -d webapp-django ]; then git clone --depth=1 git://github.com/mozilla/socorro-crashstats.git webapp-django; else (cd webapp-django && git pull); fi
+	cd webapp-django; ./bin/install.sh

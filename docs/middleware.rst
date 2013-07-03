@@ -20,8 +20,10 @@ New-style, documented services
     * `/crashes/frequency  <#crashes-frequency>`_
     * `/crashes/paireduuid <#crashes-paireduuid>`_
     * `/crashes/signatures <#crashes-signatures>`_
+    * `/crashes/exploitability <#crashes-exploitability>`_
 * `/crashtrends/ <#crashtrends>`_
 * `/extensions/ <#extensions>`_
+* `/field/ <#field>`_
 * `/job/ <#job>`_
 * `/platforms/ <#platforms>`_
 * `/priorityjobs/ <#priorityjobs>`_
@@ -41,6 +43,8 @@ New-style, documented services
 * /util/
     * `/util/versions_info/ <#versions-info>`_
 * `/crontabber_state/ <#crontabber-state>`_
+* `/correlations/ <#correlations>`_
+    * `/correlations/signatures/ <#correlation-signatures>`_
 
 Old-style, undocumented services
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -732,6 +736,80 @@ Return an object like the following::
 
 
 .. ############################################################################
+   Crashes Exploitability API
+   ############################################################################
+
+Crashes Exploitability
+----------------------
+
+Return a list of exploitable crash reports.
+
+API specifications
+^^^^^^^^^^^^^^^^^^
+
++----------------+------------------------------------------------------------------------------------------------------------+
+| HTTP method    | GET                                                                                                        |
++----------------+------------------------------------------------------------------------------------------------------------+
+| URL schema     | /crashes/exploitability/(optional_parameters)                                                              |
++----------------+------------------------------------------------------------------------------------------------------------+
+| Full URL       | /crashes/exploitability/start_date/(start_date)/end_date/(end_date)/page/(page number)/batch/(batch size)/ |
++----------------+------------------------------------------------------------------------------------------------------------+
+| Example        | /crashes/exploitability/start_date/2013-01-01/end_date/2014-01-01/page/2/batch/100/                        |
++----------------+------------------------------------------------------------------------------------------------------------+
+
+Mandatory parameters
+^^^^^^^^^^^^^^^^^^^^
+
+None
+
+Optional parameters
+^^^^^^^^^^^^^^^^^^^
+
++-----------------+---------------+---------------+--------------------------------+
+| Name            | Type of value | Default value | Description                    |
++=================+===============+===============+================================+
+| start_date      | Date          | 1 week ago    | Start date of query range      |
++-----------------+---------------+---------------+--------------------------------+
+| end_date        | Date          | Today         | End date of query range        |
++-----------------+---------------+---------------+--------------------------------+
+| batch           | Int           | None          | Number of signatures to return |
+|                 |               |               | per page.                      |
++-----------------+---------------+---------------+--------------------------------+
+| page            | Int           | 0             | Multiple of batch size for     |
+|                 |               |               | paginating query.              |
++-----------------+---------------+---------------+--------------------------------+
+
+Return value
+^^^^^^^^^^^^
+
+Return an object like the following::
+
+    {
+      "hits": [
+        {
+          "low_count": 2,
+          "high_count": 1,
+          "null_count": 0,
+          "none_count": 0,
+          "report_date": "2013-06-29",
+          "signature": "lockBtree",
+          "medium_count": 5
+        },
+        {
+          "low_count": 0,
+          "high_count": 0,
+          "null_count": 0,
+          "none_count": 1,
+          "report_date": "2013-06-29",
+          "signature": "nvwgf2um.dll@0x15cfb0",
+          "medium_count": 0
+        },
+      ],
+      "total": 2
+    }
+
+
+.. ############################################################################
    Extensions API
    ############################################################################
 
@@ -787,6 +865,58 @@ Return a list of extensions::
             }
         ]
     }
+
+
+.. ############################################################################
+   Field API
+   ############################################################################
+
+Field
+-----
+
+Return data about a field from its name.
+
+API specifications
+^^^^^^^^^^^^^^^^^^
+
++----------------+-----------------------------------------------+
+| HTTP method    | GET                                           |
++----------------+-----------------------------------------------+
+| URL schema     | /field/(mandatory_parameters)                 |
++----------------+-----------------------------------------------+
+| Full URL       | /field/name/(name)/                           |
++----------------+-----------------------------------------------+
+| Example        | http://socorro-api/bpapi/field/name/my-field/ |
++----------------+-----------------------------------------------+
+
+Mandatory parameters
+^^^^^^^^^^^^^^^^^^^^
+
++---------+---------------+---------------+-----------------------------------+
+| Name    | Type of value | Default value | Description                       |
++=========+===============+===============+===================================+
+| name    | String        | None          | Name of the field.                |
++---------+---------------+---------------+-----------------------------------+
+
+Optional parameters
+^^^^^^^^^^^^^^^^^^^
+
+None
+
+Return value
+^^^^^^^^^^^^
+
+Return a dictionary::
+
+    {
+        "name": "my-field",
+        "product": "WaterWolf",
+        "transforms": {
+            "rule1": "some notes about that rule"
+        }
+    }
+
+If no value was found for the field name, return a dictionary with null values.
 
 
 .. ############################################################################
@@ -1594,6 +1724,140 @@ table.::
           }
         },
         "last_updated": "2000-01-01T00:00:00+00:00"
+    }
+
+
+.. ############################################################################
+   Correlations API
+   ############################################################################
+
+Correlations
+------------
+
+Return correlations about specific
+
+API specifications
+^^^^^^^^^^^^^^^^^^
+
++----------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| HTTP method    | GET                                                                                                                                                                                          |
++----------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| URL schema     | /correlations/(parameters)                                                                                                                                                                   |
++----------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Full URL       | /correlations/report_type/(report_type)/product/(product)/version/(version)/platform/(platform)/signature/(signature)                                                                        |
++----------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Example        | http://socorro-api/bpapi/correlations/report_type/core-counts/product/Firefox/version/24.0a1/platform/Windows%20NT/signature/JS_HasPropertyById%28JSContext*,%20JSObject*,%20int,%20int*%29; |
++----------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+
+Mandatory parameters
+^^^^^^^^^^^^^^^^^^^^
+
++----------------+------------------+-------------------+----------------------+
+| Name           | Type of value    | Default value     | Description          |
++================+==================+===================+======================+
+| report\_type   | String           | None              | Eg. ``core-counts``  |
++----------------+------------------+-------------------+----------------------+
+| product        | String           | None              | Eg. ``Firefox``      |
++----------------+------------------+-------------------+----------------------+
+| version        | String           | None              | Eg. ``24.0a1``       |
++----------------+------------------+-------------------+----------------------+
+| platform       | String           | None              | Eg. ``Mac OS X``     |
++----------------+------------------+-------------------+----------------------+
+| signature      | String           | None              | Full signature       |
++----------------+------------------+-------------------+----------------------+
+
+
+Optional parameters
+^^^^^^^^^^^^^^^^^^^
+
+None
+
+Return value
+^^^^^^^^^^^^
+
+Returns a structure with three keys: ``count``, ``reason`` and
+``load``.::
+
+    {
+        "reason": "EXC_BAD_ACCESS / KERN_INVALID_ADDRESS",
+	"count": 13,
+	"load": "36% (4/11) vs.  26% (47/180) amd64 with 2 cores\n18% (2/11) vs.  31% (55/180) amd64 with 4 cores"
+    }
+
+If nothing is matched for your search you still get the same three
+keys but empty like this::
+
+    {
+        "reason": null,
+	"count": null,
+	"load": ""
+    }
+
+NOTE: The implementation currently depends on finding a ``.txt`` file
+on a remote server to pull down the data. If this file (filename is
+based on the parameters you pass) is not found, the response is just::
+
+   null
+
+
+.. ############################################################################
+   Correlation Signatures API
+   ############################################################################
+
+Correlation Signatures
+----------------------
+
+Return all signatures that have correlations about specific search
+parameters
+
+API specifications
+^^^^^^^^^^^^^^^^^^
+
++----------------+--------------------------------------------------------------------------------------------------------------------------------------+
+| HTTP method    | GET                                                                                                                                  |
++----------------+--------------------------------------------------------------------------------------------------------------------------------------+
+| URL schema     | /correlations/signatures/(parameters)                                                                                                |
++----------------+--------------------------------------------------------------------------------------------------------------------------------------+
+| Full URL       | /correlations/signatures/report_type/(report_type)/product/(product)/version/(version)/platforms/(platforms)                         |
++----------------+--------------------------------------------------------------------------------------------------------------------------------------+
+| Example        | http://socorro-api/bpapi/correlations/signatures/report_type/core-counts/product/Firefox/version/24.0a1/platforms/Windows%20NT+Linux |
++----------------+--------------------------------------------------------------------------------------------------------------------------------------+
+
+
+Mandatory parameters
+^^^^^^^^^^^^^^^^^^^^
+
++----------------+------------------+-------------------+--------------------------------+
+| Name           | Type of value    | Default value     | Description                    |
++================+==================+===================+================================+
+| report\_type   | String           | None              | Eg. ``core-counts``            |
++----------------+------------------+-------------------+--------------------------------+
+| product        | String           | None              | Eg. ``Firefox``                |
++----------------+------------------+-------------------+--------------------------------+
+| version        | String           | None              | Eg. ``24.0a1``                 |
++----------------+------------------+-------------------+--------------------------------+
+| platforms      | List of strings  | None              | Eg. ``Mac%20OS%20X+Linux``     |
++----------------+------------------+-------------------+--------------------------------+
+
+
+Optional parameters
+^^^^^^^^^^^^^^^^^^^
+
+None
+
+Return value
+^^^^^^^^^^^^
+
+Returns a structure with the keys ``hits`` and ``total``::
+
+    {
+        "hits": [
+            "js::GCMarker::processMarkStackTop(js::SliceBudget&)",
+            "gfxSVGGlyphs::~gfxSVGGlyphs()",
+            "mozilla::layers::ImageContainer::GetCurrentSize()"
+        ],
+        "total": 3
     }
 
 .. ############################################################################

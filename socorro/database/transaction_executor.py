@@ -17,10 +17,7 @@ class TransactionExecutor(RequiredConfig):
                  quit_check_callback=None):
         self.config = config
         self.db_conn_context_source = db_conn_context_source
-        if quit_check_callback:
-            self.quit_check = quit_check_callback
-        else:
-            self.quit_check = lambda: False
+        self.quit_check = quit_check_callback or (lambda: False)
         self.do_quit_check = True
 
     #--------------------------------------------------------------------------
@@ -35,8 +32,7 @@ class TransactionExecutor(RequiredConfig):
                 connection.commit()
                 return result
             except:
-                if self.db_conn_context_source.in_transaction(connection):
-                    connection.rollback()
+                connection.rollback()
                 self.config.logger.error(
                   'Exception raised during transaction',
                   exc_info=True)
@@ -96,9 +92,7 @@ class TransactionExecutorWithInfiniteBackoff(TransactionExecutor):
                         connection.commit()
                         return result
                     except:
-                        if self.db_conn_context_source.in_transaction(
-                                                                   connection):
-                            connection.rollback()
+                        connection.rollback()
                         raise
             except self.db_conn_context_source.conditional_exceptions, x:
                 # these exceptions may or may not be retriable

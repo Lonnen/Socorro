@@ -60,8 +60,11 @@ Mac OS X
 Install dependencies
 ::
   brew update
-  brew install python26 git gpp postgresql tcl-tk subversion mercurial
-  sudo easy_install virtualenv virtualenvwrapper
+  brew tap homebrew/versions
+  brew install python26 git gpp postgresql subversion
+  sudo easy_install virtualenv virtualenvwrapper pip
+  sudo pip-2.7 install docutils
+  brew install mercurial
 
 Set your PATH
 ::
@@ -70,7 +73,8 @@ Set your PATH
 Initialize and run PostgreSQL
 ::
   initdb -D /usr/local/pgsql/data -E utf8
-  postgres -D /usr/local/pgsql/data
+  export PGDATA=/usr/local/pgsql/data
+  pg_ctl start
 
 Create a symbolic link to pgsql_socket
 ::
@@ -87,7 +91,7 @@ Ensure that timezone is set to UTC
 
 Restart PostgreSQL to activate config changes, if the above was changed
 ::
-  brew service restart postgresql
+  pg_ctl restart
 
 Ubuntu 12.04 (Precise)
 ````````````
@@ -98,7 +102,7 @@ Install dependencies
   sudo add-apt-repository ppa:pitti/postgresql
   sudo add-apt-repository ppa:fkrull/deadsnakes
   sudo apt-get update
-  sudo apt-get install build-essential subversion libpq-dev python-virtualenv python-dev postgresql-9.2 postgresql-plperl-9.2 postgresql-contrib-9.2 rsync python2.6 python2.6-dev libxslt1-dev git-core mercurial
+  sudo apt-get install build-essential subversion libpq-dev python-virtualenv python-dev postgresql-9.2 postgresql-plperl-9.2 postgresql-contrib-9.2 postgresql-server-dev-9.2 rsync python2.6 python2.6-dev libxslt1-dev git-core mercurial
 
 Modify postgresql config
 ::
@@ -119,17 +123,17 @@ RHEL/CentOS 6
 
 Install dependencies
 ::
-  sudo yum install postgresql-server postgresql-plperl perl-pgsql_perl5 postgresql-contrib subversion make rsync subversion gcc-c++ python-virtualenv mercurial
+  sudo yum install postgresql92-server postgresql92-plperl postgresql92-contrib subversion make rsync subversion gcc-c++ python-devel mercurial git
 
 Initialize and enable PostgreSQL on startup
 ::
-  service postgresql initdb
-  service postgresql start
-  chkconfig postgresql on
+  service postgresql-9.2 initdb
+  service postgresql-9.2 start
+  chkconfig postgresql-9.2 on
 
 Modify postgresql config
 ::
-  sudo vi /etc/postgresql/9.2/main/postgresql.conf
+  sudo vi /var/lib/pgsql/9.2/data/postgresql.conf
 
 Ensure that timezone is set to UTC
 ::
@@ -137,44 +141,34 @@ Ensure that timezone is set to UTC
 
 Restart PostgreSQL to activate config changes, if the above was changed
 ::
-  sudo /usr/sbin/service postgresql restart
+  sudo /usr/sbin/service postgresql-9.2 restart
 
 Add a new superuser account to postgres
 ````````````
 
-Create a superuser account for yourself, and the breakpad_rw account for Socorro to use
+Create a superuser account for yourself
 ::
   sudo su - postgres -c "createuser -s $USER"
-  psql -c "CREATE USER breakpad_rw" template1
-  psql -c "ALTER USER breakpad_rw WITH ENCRYPTED PASSWORD 'aPassword'" template1
 
 Download and install Socorro
 ````````````
 
 Clone from github
 ::
-  git clone https://github.com/mozilla/socorro
+  git clone --depth=1 https://github.com/mozilla/socorro
 
 By default, you will be tracking the latest development release. If you would
 like to use a stable release, determine latest release tag from our release tracking wiki: https://wiki.mozilla.org/Socorro:Releases#Previous_Releases
 ::
+  git fetch origin --tags --depth=1
   git checkout $LATEST_RELEASE_TAG
 
-Copy the .ini-dist files in config/ as necessary. The rest of this guide will assume that the defaults are used.
 
-Download and install CrashStats Web UI
-````````````
-
-Clone from github
+Install json_extensions for use with PostgreSQL
+```````````````````````````````````````````````
+From inside the Socorro checkout
 ::
-  git clone https://github.com/mozilla/socorro-crashstats
-
-Read the INSTALL.md for installation instructions.
-
-By default, you will be tracking the latest development release. If you would
-like to use a stable release, determine latest release tag from our release tracking wiki: https://wiki.mozilla.org/Socorro:Releases#Previous_Releases
-::
-  git checkout $LATEST_RELEASE_TAG
+  make json_enhancements_pg_extension
 
 Run unit/functional tests
 ````````````
@@ -216,7 +210,7 @@ Load the Socorro schema
 Before loading the schema, make sure to load the roles required for Socorro.
 You should edit change the passwords, for a production install.
 ::
-  psql -f sql/roles.sql
+  psql -f sql/roles.sql breakpad
 
 Load the Socorro schema
 ::
@@ -231,7 +225,7 @@ socorro/external/postgresql/raw_sql/procs/reports_clean_done.sql
 and reload the schema
 ::
 
-  ./socorro/external/postgresql/setupdb_app.py --database_name=breakpad --dropdb --database_superuser=your_superuser --database_superuserpassword=bPassword
+  ./socorro/external/postgresql/setupdb_app.py --database_name=breakpad --dropdb --database_superusername=your_superuser --database_superuserpassword=bPassword
 
 By default, setupdb_app.py will use 'breakpad_superuser' as the superuser, and
 'bPassword' as the password. This is required because 'breakpad_rw' user must
@@ -241,7 +235,7 @@ If you want to hack on Socorro, or just see what a functional system looks
 like, you also have the option to generate and populate the DB with synthetic
 test data
 ::
-  ./socorro/external/postgresql/setupdb_app.py --database_name=breakpad --fakedata --dropdb --database_superuser=your_superuser --database_superuserpassword=bPassword
+  ./socorro/external/postgresql/setupdb_app.py --database_name=breakpad --fakedata --dropdb --database_superusername=your_superuser --database_superuserpassword=bPassword
 
 
 Create partitioned reports_* tables
@@ -280,7 +274,7 @@ Run socorro-crashstats in dev mode
 Configure socorro-crashstats/crashstats/settings/local.py to point at
 your local middleware server
 ::
-  MWARE_BASE_URL=http://localhost:8883
+  MWARE_BASE_URL = 'http://localhost:8883'
 
 Production install
 ````````````

@@ -82,14 +82,31 @@ class socorro-base {
             group => socorro,
             ensure => directory;
 
-    }
+        '/data/socorro/webapp-django/crashstats/settings/local.py':
+            alias => 'django-config',
+            require => Exec['socorro-reinstall'],
+            owner => socorro,
+            group => socorro,
+            mode => 644,
+            ensure => present,
+            notify => Service['apache2'],
+            source => '/home/socorro/dev/socorro/puppet/files/django/local.py';
 
-    file {
+        '/data/socorro/webapp-django/static/CACHE':
+            owner => socorro,
+            group => www-data,
+            mode => 777,
+            require => Exec['socorro-reinstall'],
+            recurse => true,
+            ensure => directory;
+
         '/etc/apt/sources.list':
             ensure => file;
     }
 
     exec {
+        # optimization - touching /tmp/apt-get-update makes re-provisioning
+        # faster. /tmp is cleared on boot
         '/usr/bin/apt-get update && touch /tmp/apt-get-update':
             alias => 'apt-get-update',
             creates => '/tmp/apt-get-update';
@@ -107,8 +124,8 @@ class socorro-base {
 
     package {
         ['rsyslog', 'libcurl4-openssl-dev', 'libxslt1-dev', 'build-essential',
-         'supervisor', 'ant', 'python-software-properties', 'curl', 'git-core',
-         'openjdk-6-jdk', 'maven2', 'memcached']:
+         'supervisor', 'python-software-properties', 'curl', 'git-core',
+         'memcached', 'npm', 'node-less', 'libsasl2-dev']:
             ensure => latest,
             require => Exec['apt-get-update'];
     }
@@ -131,6 +148,7 @@ class socorro-base {
         memcached:
             enable => true,
             require => Package['memcached'],
+            subscribe => Exec['socorro-reinstall'],
             ensure => running;
     }
 
@@ -181,13 +199,6 @@ class socorro-python inherits socorro-base {
             source => "/home/socorro/dev/socorro/puppet/files/etc_mercurial/hgrc";
     }
 
-# FIXME
-#        '/etc/logrotate.d/socorro':
-#            ensure => present,
-#            source => $fqdn ? {
-#                /sjc1.mozilla.com$/ => "puppet://$server/modules/socorro/stage/etc-logrotated/socorro",
-#                default => "puppet://$server/modules/socorro/prod/etc-logrotated/socorro",
-#                };
     package {
         ['subversion', 'libpq-dev', 'python-virtualenv', 'python2.6-dev',
          'python-pip', 'mercurial']:
@@ -215,8 +226,8 @@ class socorro-python inherits socorro-base {
             alias => 'socorro-install',
             cwd => '/home/socorro/dev/socorro',
             timeout => '3600',
-            creates => '/home/socorro/dev/socorro/analysis/build/lib/socorro-analysis-job.jar',
-            require => [Package['ant'], File['/data/socorro'],
+            creates => '/data/socorro/revision.txt',
+            require => [File['/data/socorro'],
                         Exec['minidump_stackwalk-install']],
             logoutput => on_failure,
             user => 'socorro';
@@ -227,20 +238,36 @@ class socorro-python inherits socorro-base {
             alias => 'socorro-virtualenv',
             cwd => '/home/socorro/dev/socorro',
             timeout => '3600',
-            require => Exec['socorro-install'],
             logoutput => on_failure,
+            require => Package['build-essential'],
             user => 'socorro';
     }
 
-    exec { '/usr/bin/make reinstall':
+    exec { '/usr/bin/make reinstall VIRTUALENV=socorro-vagrant-virtualenv':
             alias => 'socorro-reinstall',
             cwd => '/home/socorro/dev/socorro',
             timeout => '3600',
             require => [Exec['socorro-install'],
                         Package['apache2'],
-                        Package['memcached']],
+                        Package['memcached'],
+                        Package['npm'],
+                        Package['node-less'],
+                        Package['libsasl2-dev']],
             logoutput => on_failure,
-            notify => [Service['apache2'], Service['memcached']],
+            user => 'socorro';
+    }
+
+}
+
+class socorro-test inherits socorro-base {
+
+    exec { '/usr/bin/make test VIRTUALENV=socorro-vagrant-virtualenv DB_SUPERUSER=socorro':
+            alias => 'socorro-unittest',
+            cwd => '/home/socorro/dev/socorro',
+            timeout => '3600',
+            require => [Exec['socorro-reinstall'], Exec['create-roles'],
+                        Exec['create-user'], Exec['install-json-enhancements']],
+            logoutput => on_failure,
             user => 'socorro';
     }
 }
@@ -250,9 +277,9 @@ class socorro-web inherits socorro-base {
     package {
         'apache2':
             ensure => latest,
-            require => [Exec['apt-get-update'], Exec['socorro-install']];
+            require => [Exec['apt-get-update']];
 
-        ['libapache2-mod-php5', 'libapache2-mod-wsgi']:
+        'libapache2-mod-wsgi':
             ensure => latest,
             require => [Exec['apt-get-update'], Package[apache2]];
     }
@@ -261,16 +288,15 @@ class socorro-web inherits socorro-base {
         apache2:
             enable => true,
             ensure => running,
-            subscribe => Exec['socorro-install'],
-            require => [Package[apache2], Exec[enable-mod-rewrite],
-                        Exec[enable-mod-headers], Exec[enable-mod-ssl],
-                        Exec[enable-mod-php5],
-                        Package[libapache2-mod-php5], Exec[enable-mod-proxy]];
+            hasstatus => true,
+            subscribe => [Exec['socorro-reinstall'],
+                          Exec['enable-crash-stats-vhost']],
+            require => [Package['apache2'], Package['libapache2-mod-wsgi']];
     }
 
      file {
         '/etc/apache2/sites-available/crash-stats':
-            require => Package[apache2],
+            require => Package['apache2'],
             alias => 'crash-stats-vhost',
             owner => root,
             group => root,
@@ -278,36 +304,6 @@ class socorro-web inherits socorro-base {
             ensure => present,
             notify => Service[apache2],
             source => "/home/socorro/dev/socorro/puppet/files/etc_apache2_sites-available/crash-stats";
-
-        '/var/log/socorro/kohana':
-            require => Package[apache2],
-            owner => www-data,
-            group => www-data,
-            mode  => 755,
-            ensure => directory;
-
-        '/etc/php.ini':
-            require => Package[apache2],
-            owner => root,
-            group => root,
-            mode => 644,
-            ensure => present,
-            notify => Service[apache2],
-            source => "/home/socorro/dev/socorro/puppet/files/php.ini";
-
-        '/data/socorro/htdocs/application/logs':
-            require => Exec['socorro-install'],
-            mode => 777,
-            ensure => directory;
-
-# FIXME
-#        '/etc/logrotate.d/kohana':
-#            ensure => present,
-#            source => $fqdn ? {
-#                /sjc1.mozilla.com$/ => "puppet://$server/modules/socorro/stage/etc-logrotated/kohana",
-#                default => "puppet://$server/modules/socorro/prod/etc-logrotated/kohana",
-#                };
-
     }
 
     exec {
@@ -318,62 +314,12 @@ class socorro-web inherits socorro-base {
     }
 
     exec {
-        '/usr/sbin/a2enmod rewrite':
-            alias => 'enable-mod-rewrite',
-            require => File['crash-stats-vhost'],
-            creates => '/etc/apache2/mods-enabled/rewrite.load';
+        '/data/socorro/webapp-django/manage.py syncdb --noinput':
+            alias => 'django-syncdb',
+            timeout => '3600',
+            require => [Exec['socorro-reinstall'], File['django-config'],
+                        Exec['create-breakpad-db']],
+            logoutput => on_failure,
+            user => 'socorro';
     }
-    exec {
-        '/usr/sbin/a2enmod php5':
-            alias => 'enable-mod-php5',
-            require => File['crash-stats-vhost'],
-            creates => '/etc/apache2/mods-enabled/php5.load';
-    }
-
-    exec {
-        '/usr/sbin/a2enmod proxy && /usr/sbin/a2enmod proxy_http':
-            alias => 'enable-mod-proxy',
-            require => File['crash-stats-vhost'],
-            creates => '/etc/apache2/mods-enabled/proxy_http.load';
-    }
-
-    exec {
-        '/usr/sbin/a2enmod ssl':
-            alias => 'enable-mod-ssl',
-            require => File['crash-stats-vhost'],
-            creates => '/etc/apache2/mods-enabled/ssl.load';
-    }
-
-    exec {
-        '/usr/sbin/a2enmod headers':
-            alias => 'enable-mod-headers',
-            require => File['crash-stats-vhost'],
-            creates => '/etc/apache2/mods-enabled/headers.load';
-    }
-
-    package {
-        ['libcrypt-ssleay-perl', 'php5-pgsql', 'php5-curl',
-         'php5-dev', 'php5-tidy', 'php-pear', 'php5-common', 'php5-cli',
-         'php5-memcache', 'php5', 'php5-gd', 'php5-mysql', 'php5-ldap',
-         'phpunit']:
-            ensure => latest,
-            require => Exec['apt-get-update'];
-    }
-}
-
-class socorro-java inherits socorro-base {
-
-    exec { 'package-oracle-jdk':
-        command => '/usr/bin/wget https://github.com/flexiondotorg/oab-java6/raw/0.2.7/oab-java.sh -O oab-java.sh && bash oab-java.sh',
-        creates => '/etc/apt/sources.list.d/oab.list',
-        cwd => '/home/socorro',
-        require => Exec["apt-get-update"],
-        timeout => 0
-    }
-
-    package { ['sun-java6-jdk']:
-        require => Exec['package-oracle-jdk'],
-        ensure => latest
-    }
-
 }

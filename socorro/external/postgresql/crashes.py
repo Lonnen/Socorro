@@ -469,3 +469,89 @@ class Crashes(PostgreSQLBase):
             return tcbs.twoPeriodTopCrasherComparison(cursor, params)
         finally:
             connection.close()
+
+    def get_exploitability(self, **kwargs):
+        """Return a list of exploitable crash reports.
+
+        See socorro.lib.external_common.parse_arguments() for all filters.
+        """
+        now = datetimeutil.utc_now().date()
+        lastweek = now - datetime.timedelta(weeks=1)
+
+        filters = [
+            ("start_date", lastweek, "date"),
+            ("end_date", now, "date"),
+            ("page", None, "int"),
+            ("batch", None, "int"),
+        ]
+
+        params = external_common.parse_arguments(filters, kwargs)
+
+        count_sql_query = """
+            /* external.postgresql.crashes.Crashes.get_exploitability */
+            SELECT COUNT(*)
+            FROM exploitability_reports
+            WHERE
+                report_date BETWEEN %(start_date)s AND %(end_date)s
+        """
+        results = self.query(
+            count_sql_query,
+            params,
+            error_message="Failed to retrieve exploitable crashes count"
+        )
+        total_crashes_count, = results[0]
+
+        sql_query = """
+            /* external.postgresql.crashes.Crashes.get_exploitability */
+            SELECT
+                signature,
+                report_date,
+                null_count,
+                none_count,
+                low_count,
+                medium_count,
+                high_count
+            FROM exploitability_reports
+            WHERE
+                report_date BETWEEN %(start_date)s AND %(end_date)s
+            ORDER BY
+                report_date DESC
+        """
+
+        if params['page'] is not None:
+            if params['page'] <= 0:
+                raise MissingOrBadArgumentError(
+                    "'page' starts on 1"
+                )
+            if params['batch'] is None:
+                raise MissingOrBadArgumentError(
+                    "'page' passed but not 'batch' size specified"
+                )
+            sql_query += """
+            LIMIT %(limit)s
+            OFFSET %(offset)s
+            """
+            params['limit'] = params['batch']
+            params['offset'] = params['batch'] * (params['page'] - 1)
+
+        error_message = "Failed to retrieve exploitable crashes from PostgreSQL"
+        results = self.query(sql_query, params, error_message=error_message)
+
+        # Transforming the results into what we want
+        crashes = []
+        for row in results:
+            crash = dict(zip(("signature",
+                              "report_date",
+                              "null_count",
+                              "none_count",
+                              "low_count",
+                              "medium_count",
+                              "high_count"), row))
+            crash["report_date"] = datetimeutil.date_to_string(
+                crash["report_date"])
+            crashes.append(crash)
+
+        return {
+            "hits": crashes,
+            "total": total_crashes_count
+        }

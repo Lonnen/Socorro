@@ -7,7 +7,6 @@ from nose.plugins.attrib import attr
 
 from socorro.external.postgresql.crashes import Crashes
 from socorro.lib import datetimeutil
-import socorro.unittest.testlib.util as testutil
 
 from .unittestbase import PostgreSQLTestCase
 
@@ -140,7 +139,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                 win_count,
                 mac_count,
                 lin_count,
-                hang_count
+                hang_count,
+                is_gc_count
             )
             VALUES
             (
@@ -153,7 +153,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                 12,
                 1,
                 1,
-                0
+                0,
+                1
             ),
             (
                 2,
@@ -165,7 +166,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                 1,
                 1,
                 1,
-                0
+                0,
+                1
             ),
             (
                 1,
@@ -177,7 +179,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                 0,
                 0,
                 5,
-                5
+                5,
+                10
             ),
             (
                 1,
@@ -189,7 +192,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                 7,
                 2,
                 1,
-                0
+                0,
+                3
             ),
             (
                 3,
@@ -201,7 +205,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                 12,
                 1,
                 1,
-                0
+                0,
+                4
             );
         """ % {
             'now': self.now,
@@ -222,7 +227,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                 win_count,
                 mac_count,
                 lin_count,
-                hang_count
+                hang_count,
+                is_gc_count
             )
             VALUES
             (
@@ -236,7 +242,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                 12,
                 1,
                 1,
-                0
+                0,
+                3
             ),
             (
                 2,
@@ -249,7 +256,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                 1,
                 1,
                 1,
-                0
+                0,
+                1
             ),
             (
                 1,
@@ -262,7 +270,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                 0,
                 0,
                 5,
-                5
+                5,
+                2
             ),
             (
                 1,
@@ -275,7 +284,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                 7,
                 2,
                 1,
-                0
+                0,
+                2
             ),
             (
                 3,
@@ -288,7 +298,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                 12,
                 1,
                 1,
-                0
+                0,
+                10
             );
         """ % {
             'now': self.now,
@@ -351,7 +362,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                     'signature': 'signature1',
                     'versions_count': 2,
                     'previousPercentOfTotal': 1.0,
-                    'plugin_count': 0
+                    'plugin_count': 0,
+                    'is_gc_count': 11L
                 },
                 {
                     'count': 3L,
@@ -372,7 +384,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                     'signature': 'signature2',
                     'versions_count': 6,
                     'previousPercentOfTotal': 'null',
-                    'plugin_count': 0
+                    'plugin_count': 0,
+                    'is_gc_count': 1L
                 }
             ],
             'totalNumberOfCrashes': 22L
@@ -411,7 +424,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                     'signature': 'signature1',
                     'versions_count': 2,
                     'previousPercentOfTotal': 'null',
-                    'plugin_count': 0
+                    'plugin_count': 0,
+                    'is_gc_count': 10L
                 }
             ],
             'totalNumberOfCrashes': 5L
@@ -450,7 +464,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                     'signature': 'signature1',
                     'versions_count': 2,
                     'previousPercentOfTotal': 0.69999999999999996,
-                    'plugin_count': 0
+                    'plugin_count': 0,
+                    'is_gc_count': 1L
                 },
                 {
                     'count': 3L,
@@ -471,7 +486,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                     'signature': 'signature2',
                     'versions_count': 6,
                     'previousPercentOfTotal': 'null',
-                    'plugin_count': 0
+                    'plugin_count': 0,
+                    'is_gc_count': 1L
                 }
             ],
             'totalNumberOfCrashes': 17L
@@ -521,7 +537,8 @@ class IntegrationTestCrashesSignatures(PostgreSQLTestCase):
                     'signature': 'signature3',
                     'versions_count': 2,
                     'previousPercentOfTotal': 'null',
-                    'plugin_count': 14
+                    'plugin_count': 14,
+                    'is_gc_count': 10L
                 }
             ],
             'totalNumberOfCrashes': 14L

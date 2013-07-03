@@ -194,6 +194,7 @@ class Tcbs(DeclarativeBase):
     lin_count = Column(u'lin_count', INTEGER(), nullable=False, server_default=text('0'))
     hang_count = Column(u'hang_count', INTEGER(), nullable=False, server_default=text('0'))
     startup_count = Column(u'startup_count', INTEGER())
+    is_gc_count = Column(u'is_gc_count', INTEGER(), server_default=text('0'))
 
     idx_tcbs_product_version = Index('idx_tcbs_product_version', product_version_id, report_date)
     tcbs_report_date = Index('tcbs_report_date', report_date)
@@ -249,6 +250,24 @@ class Extension(DeclarativeBase):
     uuid = Column(u'uuid', UUID())
 
     __mapper_args__ = {"primary_key":(report_id, date_processed, extension_key, extension_id, extension_version)}
+
+class ExploitabilityReport(DeclarativeBase):
+    __tablename__ = 'exploitability_reports'
+
+    #column definitions
+    signature_id = Column(u'signature_id', INTEGER(), ForeignKey('signatures.signature_id'), nullable=False)
+    signature = Column(u'signature', TEXT(), nullable=False)
+    report_date = Column(u'report_date', DATE(), nullable=False, index=True)
+    null_count = Column(u'null_count', INTEGER(), nullable=False, server_default=text('0'))
+    none_count = Column(u'none_count', INTEGER(), nullable=False, server_default=text('0'))
+    low_count = Column(u'low_count', INTEGER(), nullable=False, server_default=text('0'))
+    medium_count = Column(u'medium_count', INTEGER(), nullable=False, server_default=text('0'))
+    high_count = Column(u'high_count', INTEGER(), nullable=False, server_default=text('0'))
+
+    # Indexes
+    exploitable_signature_idx = Index('exploitable_signature_date_idx', signature_id, report_date, unique=True)
+
+    __mapper_args__ = {"primary_key":(signature_id, report_date)}
 
 class PluginsReport(DeclarativeBase):
     __tablename__ = 'plugins_reports'
@@ -931,13 +950,13 @@ class ProductVersion(DeclarativeBase):
     is_rapid_beta = Column(u'is_rapid_beta', BOOLEAN(), server_default=text('False'))
     rapid_beta_id = Column(u'rapid_beta_id', INTEGER(), ForeignKey('product_versions.product_version_id'))
 
-    # Indexes 
+    # Indexes
     product_versions_major_version = Index('product_versions_major_version', major_version)
     product_versions_product_name = Index('product_versions_product_name', product_name)
     product_versions_version_sort = Index('product_versions_version_sort', version_sort)
     product_version_version_key = Index('product_version_version_key', product_name, version_string, unique=True)
 
-    # TODO 
+    # TODO
     # product_version_unique_beta = Index('product_version_unique_beta', ON product_versions product_name, release_version, beta_number) WHERE (beta_number IS NOT NULL, unique=True)
 
     #relationship definitions
@@ -1111,6 +1130,7 @@ class ReportsClean(DeclarativeBase):
     signature_id = Column(u'signature_id', INTEGER(), nullable=False)
     uptime = Column(u'uptime', INTERVAL())
     uuid = Column(u'uuid', TEXT(), primary_key=True, nullable=False)
+    exploitability = Column(u'exploitability', TEXT())
 
     #relationship definitions
 
@@ -1213,6 +1233,7 @@ class SignatureProduct(DeclarativeBase):
     #relationship definitions
     signatures = relationship('Signature', primaryjoin='SignatureProduct.signature_id==Signature.signature_id')
 
+
 class SignatureProductsRollup(DeclarativeBase):
     __tablename__ = 'signature_products_rollup'
 
@@ -1225,11 +1246,13 @@ class SignatureProductsRollup(DeclarativeBase):
     products = relationship('Product', primaryjoin='SignatureProductsRollup.product_name==Product.product_name')
     signatures = relationship('Signature', primaryjoin='SignatureProductsRollup.signature_id==Signature.signature_id')
 
+
 class Skiplist(DeclarativeBase):
     __tablename__ = 'skiplist'
 
     category = Column(u'category', TEXT(), primary_key=True, nullable=False)
     rule = Column(u'rule', TEXT(), primary_key=True, nullable=False)
+
 
 class SocorroDbVersion(DeclarativeBase):
     __tablename__ = 'socorro_db_version'
@@ -1290,6 +1313,7 @@ class TcbsBuild(DeclarativeBase):
     signature_id = Column(u'signature_id', INTEGER(), primary_key=True, nullable=False)
     startup_count = Column(u'startup_count', INTEGER())
     win_count = Column(u'win_count', INTEGER(), nullable=False, server_default=text('0'))
+    is_gc_count = Column(u'is_gc_count', INTEGER(), server_default=text('0'))
 
     #relationship definitions
 

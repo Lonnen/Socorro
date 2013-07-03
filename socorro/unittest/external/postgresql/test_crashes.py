@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+import random
 import unittest
 import datetime
 from nose.plugins.attrib import attr
@@ -308,6 +309,23 @@ class IntegrationTestCrashes(PostgreSQLTestCase):
             (2, 'lin', 1, '%(yesterday)s', '%(now)s', 1, 1000)
         """ % {"now": self.now, "yesterday": yesterday})
 
+        cursor.execute("""
+            INSERT INTO signatures
+            (signature_id, signature, first_build, first_report)
+            VALUES
+            (1, 'canIhaveYourSignature()', 2008120122, '%(now)s'),
+            (2, 'ofCourseYouCan()', 2008120122, '%(now)s')
+        """ % {"now": self.now.date()})
+
+        cursor.execute("""
+            INSERT INTO exploitability_reports
+            (signature_id, signature, report_date,
+             null_count, none_count, low_count, medium_count, high_count)
+            VALUES
+            (1, 'canIhaveYourSignature()', '%(now)s', 0, 1, 2, 3, 4),
+            (2, 'ofCourseYouCan()', '%(yesterday)s', 4, 3, 2, 1, 0)
+        """ % {"now": self.now, "yesterday": yesterday})
+
         self.connection.commit()
         cursor.close()
 
@@ -318,9 +336,9 @@ class IntegrationTestCrashes(PostgreSQLTestCase):
         cursor.execute("""
             TRUNCATE reports, home_page_graph_build, home_page_graph,
                      crashes_by_user, crashes_by_user_build, crash_types,
-                     process_types, os_names,
+                     process_types, os_names, signatures,
                      product_versions, product_release_channels,
-                     release_channels, products
+                     release_channels, products, exploitability_reports
             CASCADE
         """)
         self.connection.commit()
@@ -713,3 +731,142 @@ class IntegrationTestCrashes(PostgreSQLTestCase):
         self.assertRaises(MissingOrBadArgumentError,
                           crashes.get_paireduuid,
                           **params)
+
+    #--------------------------------------------------------------------------
+    def test_get_exploitibility(self):
+        crashes = Crashes(config=self.config)
+        today = datetimeutil.date_to_string(self.now.date())
+        yesterday_date = (self.now - datetime.timedelta(days=1)).date()
+        yesterday = datetimeutil.date_to_string(yesterday_date)
+
+        res_expected = {
+            "hits": [
+                {
+                    "signature": "canIhaveYourSignature()",
+                    "report_date": today,
+                    "null_count": 0,
+                    "none_count": 1,
+                    "low_count": 2,
+                    "medium_count": 3,
+                    "high_count": 4,
+                },
+                {
+                    "signature": "ofCourseYouCan()",
+                    "report_date": yesterday,
+                    "null_count": 4,
+                    "none_count": 3,
+                    "low_count": 2,
+                    "medium_count": 1,
+                    "high_count": 0,
+                }
+            ],
+            "total": 2,
+        }
+
+        res = crashes.get_exploitability()
+        self.assertEqual(res, res_expected)
+
+    def test_get_exploitibility_with_pagination(self):
+        crashes = Crashes(config=self.config)
+        today = datetimeutil.date_to_string(self.now.date())
+        yesterday_date = (self.now - datetime.timedelta(days=1)).date()
+        day_before_yesterday = (self.now - datetime.timedelta(days=2)).date()
+
+        j = 100  # some number so it's not used by other tests or fixtures
+
+        rand = lambda: random.randint(0, 10)
+        exploit_values = []
+        signature_values = []
+        for day in day_before_yesterday, yesterday_date, self.now:
+            for i in range(10):
+                exploit_values.append(
+                    "(%s, 'Signature%s%s', '%s', %s, %s, %s, %s, %s)" % (
+                        j + 1, j, i, day, rand(), rand(), rand(), rand(), rand()
+                    )
+                )
+                signature_values.append(
+                    "(%s, 'Signature%s%s', %s, '%s')" % (
+                        j + 1, j, i, day.strftime('%Y%m%d%H'), day
+                    )
+                )
+                j += 1
+        cursor = self.connection.cursor()
+
+        insert = """
+        INSERT INTO signatures
+            (signature_id, signature, first_build, first_report)
+        VALUES
+        """
+        insert += ',\n'.join(signature_values)
+        cursor.execute(insert)
+
+        insert = """
+        INSERT INTO exploitability_reports
+           (signature_id, signature, report_date,
+            null_count, none_count, low_count, medium_count, high_count)
+        VALUES
+        """
+        insert += ',\n'.join(exploit_values)
+        cursor.execute(insert)
+        self.connection.commit()
+
+        res = crashes.get_exploitability()
+        self.assertEqual(len(res['hits']), res['total'])
+        self.assertTrue(res['total'] >= 3 * 10)
+
+        res = crashes.get_exploitability(
+            start_date=yesterday_date,
+            end_date=self.now
+        )
+        self.assertEqual(len(res['hits']), res['total'])
+        self.assertTrue(res['total'] >= 2 * 10)
+        self.assertTrue(res['total'] < 3 * 10)
+
+        # passing a `page` without `batch` will yield an error
+        self.assertRaises(
+            MissingOrBadArgumentError,
+            crashes.get_exploitability,
+            page=2
+        )
+        # `page` starts on one so anything smaller is bad
+        self.assertRaises(
+            MissingOrBadArgumentError,
+            crashes.get_exploitability,
+            page=0,
+            batch=15
+        )
+
+        # Note, `page=1` is on number line starting on 1
+        res = crashes.get_exploitability(
+            page=1,
+            batch=15
+        )
+        self.assertNotEqual(len(res['hits']), res['total'])
+        self.assertEqual(len(res['hits']), 15)
+        self.assertTrue(res['total'] >= 3 * 10)
+        # since it's ordered by `report_date`...
+        report_dates = [x['report_date'] for x in res['hits']]
+        self.assertEqual(
+            report_dates[0],
+            datetimeutil.date_to_string(self.now.date())
+        )
+        self.assertEqual(
+            report_dates[-1],
+            datetimeutil.date_to_string(yesterday_date)
+        )
+
+        res = crashes.get_exploitability(
+            page=2,
+            batch=5,
+            start_date=day_before_yesterday,
+            end_date=yesterday_date
+        )
+
+        self.assertEqual(len(res['hits']), 5)
+        self.assertTrue(res['total'] >= 2 * 10)
+        self.assertTrue(res['total'] < 3 * 10)
+        report_dates = [x['report_date'] for x in res['hits']]
+        self.assertEqual(
+            report_dates[0],
+            datetimeutil.date_to_string(yesterday_date)
+        )
