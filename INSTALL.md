@@ -106,6 +106,7 @@ Then, make the file executable:
 
 Production notes
 ----------------
-Do not use locmem cache, as it will break work of an anonymous CSRF on servers with more than one web-server thread.
+Do not use locmem cache, as it will break work of an anonymous CSRF on servers 
+with more than one web-server thread.
 [More details](https://github.com/mozilla/django-session-csrf#differences-from-django)
 
