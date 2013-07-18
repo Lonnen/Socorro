@@ -15,6 +15,13 @@ Add the LESS Preprocessor
 You need to [install less](http://lesscss.org/#-server-side-usage) and
 make sure it's available on your `PATH`.
 
+* CentOS6/RHEL
+
+  Make sure, you have epel repo active.
+  Then execute
+
+    `sudo yum install npm nodejs-less`
+
 
 Create virtualenv and populate it
 ---------------------------------
