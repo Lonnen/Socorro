@@ -38,7 +38,7 @@ class ElasticsearchBackfillApp(generic_app.App):
     )
     required_config.elasticsearch.add_option(
         'elasticsearch_index_alias',
-        default='socorro%Y%W_%Y%m%d',
+        default='%%s_%Y%m%d',
         doc='Index to use when reindex data. Will be aliased to the regular '
             'index. '
     )
@@ -67,6 +67,12 @@ class ElasticsearchBackfillApp(generic_app.App):
         default=100,
         doc='Number of crashes to index at a time. '
     )
+    required_config.add_option(
+        'fetch_only',
+        default=0,
+        doc='For testing purpose only, stop indexing after this number of '
+            'documents. Leave 0 to disable. '
+    )
 
     def main(self):
         self.es_storage = self.config.elasticsearch.storage_class(
@@ -76,6 +82,7 @@ class ElasticsearchBackfillApp(generic_app.App):
             self.config.secondary_storage
         )
 
+        now = datetimeutil.utc_now()
         current_date = self.config.end_date
 
         one_week = datetime.timedelta(weeks=1)
@@ -86,9 +93,9 @@ class ElasticsearchBackfillApp(generic_app.App):
                 self.config.elasticsearch.elasticsearch_index
             )
             es_new_index = self.get_index_for_date(
-                current_date,
+                now,
                 self.config.elasticsearch.elasticsearch_index_alias
-            )
+            ) % es_current_index
 
             self.config.logger.info(
                 'backfilling crashes for %s',
@@ -115,6 +122,16 @@ class ElasticsearchBackfillApp(generic_app.App):
                 total_num_of_crashes_in_index,
                 self.config.index_doc_number
             ):
+                if (
+                    self.config.fetch_only and
+                    es_from >= self.config.fetch_only
+                ):
+                    # For performance testing only!
+                    # If fetch_only is set, stop right after we
+                    # reach that number of documents, without destroying the
+                    # original index.
+                    return 0
+
                 crashes_to_index = []
                 reports = self.get_reports(
                     es_current_index,
