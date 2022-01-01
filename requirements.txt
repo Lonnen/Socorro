@@ -282,9 +282,9 @@ json-schema-reducer==0.1.4 \
     --hash=sha256:41c674275c2650dadb7f8af1193640ca41eb863926985ecda5bfee93aef265c0 \
     --hash=sha256:b6fbe437361e0ec14f5c05daf752604834bd9abe5af9ab6bdcb05ea1f8df1df6
     # via -r requirements.in
-jsonschema==4.1.2 \
-    --hash=sha256:166870c8ab27bd712a8627e0598de4685bd8d199c4d7bd7cacc3d941ba0c6ca0 \
-    --hash=sha256:5c1a282ee6b74235057421fd0f766ac5f2972f77440927f6471c9e8493632fac
+jsonschema==4.3.2 \
+    --hash=sha256:8697a10a5a5edc922d2eb8556c7f35e814436f3ed8278ec2f65d40e9312d7c80 \
+    --hash=sha256:cca171fb7544de15ccda236bf78d58434d769c9a2ce21d44e0d209e39eeb8876
     # via -r requirements.in
 lxml==4.6.3 \
     --hash=sha256:079f3ae844f38982d156efce585bc540c16a926d4436712cf4baee0cce487a3d \
