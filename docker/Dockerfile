@@ -43,7 +43,7 @@ RUN ls -al /app/bin/
 # =========================================================================
 
 # https://hub.docker.com/_/python
-FROM python:3.9.7-slim@sha256:cd1045dbabff11dab74379e25f7974aa7638bc5ad46755d67d0f1f1783aee101
+FROM python:3.10.4-slim@sha256:48991dce6601b7c3b8f08f21dc211608a1c233c76945e5435df4bae626a5f648
 
 # Set up user and group
 ARG groupid=10001
